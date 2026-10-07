@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:protocolschlaff/data/sleep_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// HALLO
 void main() {
   group('sleep duration totals', () {
     test('converts 02:00 to 06:00 into four hours', () {
