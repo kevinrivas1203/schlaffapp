@@ -82,6 +82,8 @@ enum SleepTimelineIssue {
   invalidSavedTime,
 }
 
+typedef SleepTimelineEntry = ({String dateKey, SleepEntry entry});
+
 bool isSleepQuestion(String question) => const {
       'Dormir en su propia cama',
       'Dormir en la cama de los padres',
@@ -158,6 +160,43 @@ SleepTimelineIssue? validateSleepEntryTimeline({
     return SleepTimelineIssue.overlapsAnotherEntry;
   }
   return null;
+}
+
+List<SleepTimelineEntry> findSleepTimelineConflicts({
+  required String question,
+  required DateTime date,
+  required int startMinutes,
+  required int endMinutes,
+  required List<SleepDay> existingDays,
+}) {
+  final dayStart = _utcDayStart(date);
+  final candidateStart = dayStart + startMinutes;
+  final candidateEnd =
+      dayStart + endMinutes + (endMinutes <= startMinutes ? 1440 : 0);
+  final existing = <SleepTimelineEntry>[];
+
+  for (final day in existingDays) {
+    final existingDayStart = _parseDateKey(day.dateKey);
+    if (existingDayStart == null) continue;
+    for (final entry in day.entries) {
+      final start = parseTimeOfDayMinutes(entry.startTime);
+      final end = parseTimeOfDayMinutes(entry.endTime);
+      if (start == null || end == null || start == end) continue;
+      final absoluteStart = existingDayStart + start;
+      final absoluteEnd = existingDayStart + end + (end <= start ? 1440 : 0);
+      if (isAwakeningQuestion(question)) {
+        if (isSleepQuestion(entry.question) &&
+            absoluteStart <= candidateStart &&
+            candidateEnd <= absoluteEnd) {
+          existing.add((dateKey: day.dateKey, entry: entry));
+        }
+      } else if (candidateStart < absoluteEnd &&
+          absoluteStart < candidateEnd) {
+        existing.add((dateKey: day.dateKey, entry: entry));
+      }
+    }
+  }
+  return existing;
 }
 
 bool hasSleepIntervalOnDate({

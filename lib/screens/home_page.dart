@@ -78,7 +78,10 @@ class _ChildProfilePageState extends State<ChildProfilePage> {
     final startMinutes = parseTimeOfDayMinutes(entry.startTime);
     final endMinutes = parseTimeOfDayMinutes(entry.endTime);
     if (startMinutes == null || endMinutes == null) {
-      _showTimelineError(SleepTimelineIssue.invalidSavedTime);
+      await _showTimelineError(
+        SleepTimelineIssue.invalidSavedTime,
+        entry,
+      );
       return;
     }
     final issue = validateSleepEntryTimeline(
@@ -89,7 +92,7 @@ class _ChildProfilePageState extends State<ChildProfilePage> {
       existingDays: _daysByProfile[profile.id] ?? const [],
     );
     if (issue != null) {
-      _showTimelineError(issue);
+      await _showTimelineError(issue, entry);
       return;
     }
 
@@ -107,7 +110,25 @@ class _ChildProfilePageState extends State<ChildProfilePage> {
     await _persist();
   }
 
-  void _showTimelineError(SleepTimelineIssue issue) {
+  String _formatTimelineTime(String value) {
+    final minutes = parseTimeOfDayMinutes(value);
+    if (minutes == null) return value;
+    final hour = minutes ~/ 60;
+    final minute = minutes % 60;
+    final period = switch (AppLanguageScope.of(context)) {
+      AppLanguage.spanish => hour < 12 ? 'a. m.' : 'p. m.',
+      AppLanguage.portuguese => hour < 12 ? 'AM' : 'PM',
+      AppLanguage.german => hour < 12 ? 'AM' : 'PM',
+    };
+    final hour12 = hour % 12 == 0 ? 12 : hour % 12;
+    return '${hour12.toString().padLeft(2, '0')}:'
+        '${minute.toString().padLeft(2, '0')} $period';
+  }
+
+  Future<void> _showTimelineError(
+    SleepTimelineIssue issue,
+    SleepEntry attemptedEntry,
+  ) async {
     final message = switch (issue) {
       SleepTimelineIssue.wakeOutsideSleep =>
         'El período de despertar debe quedar dentro de un período de sueño registrado.',
@@ -118,9 +139,54 @@ class _ChildProfilePageState extends State<ChildProfilePage> {
       SleepTimelineIssue.invalidSavedTime =>
         'Hay un horario guardado no válido. Revisa ese registro antes de continuar.',
     };
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(appText(context, message))));
+    final attemptedInterval =
+        '${_formatTimelineTime(attemptedEntry.startTime)} – '
+        '${_formatTimelineTime(attemptedEntry.endTime)}';
+    final startMinutes = parseTimeOfDayMinutes(attemptedEntry.startTime);
+    final endMinutes = parseTimeOfDayMinutes(attemptedEntry.endTime);
+    final conflicts = startMinutes == null || endMinutes == null
+        ? <SleepTimelineEntry>[]
+        : findSleepTimelineConflicts(
+            question: attemptedEntry.question,
+            date: _selectedDate,
+            startMinutes: startMinutes,
+            endMinutes: endMinutes,
+            existingDays: _daysByProfile[widget.profile.id] ?? const [],
+          );
+    final conflict = conflicts.firstOrNull;
+    final explanation = issue == SleepTimelineIssue.wakeOutsideSleep
+        ? appText(
+            context,
+            'El intervalo de despertar {attempted} debe quedar dentro de un período de sueño registrado.',
+            {'attempted': attemptedInterval},
+          )
+        : conflict == null
+            ? appText(context, message)
+            : appText(
+                context,
+                'El intervalo {attempted} se solapa con “{category}”, registrado de {start} a {end}.',
+                {
+                  'attempted': attemptedInterval,
+                  'category': appText(context, conflict.entry.question),
+                  'start': _formatTimelineTime(conflict.entry.startTime),
+                  'end': _formatTimelineTime(conflict.entry.endTime),
+                },
+              );
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.error_outline),
+        title: Text(appText(context, 'No se puede guardar este horario')),
+        content: Text(explanation),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(appText(context, 'Aceptar')),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _editQuestionnaire() async {
@@ -244,8 +310,7 @@ class _ChildProfilePageState extends State<ChildProfilePage> {
                             !hasSleepIntervalOnDate(
                               date: _selectedDate,
                               existingDays:
-                                  _daysByProfile[widget.profile.id] ??
-                                      const [],
+                                  _daysByProfile[widget.profile.id] ?? const [],
                             );
                         return Card(
                           child: ListTile(

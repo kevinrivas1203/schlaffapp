@@ -84,6 +84,16 @@ void main() {
         ),
         SleepTimelineIssue.overlapsSleep,
       );
+      final conflicts = findSleepTimelineConflicts(
+        question: 'Juego con padres/persona de referencia',
+        date: DateTime(2026, 10, 7),
+        startMinutes: 11 * 60 + 30,
+        endMinutes: 12 * 60 + 30,
+        existingDays: [sleepDay],
+      );
+      expect(conflicts.single.entry.question, 'Dormir en su propia cama');
+      expect(conflicts.single.entry.startTime, '11:00');
+      expect(conflicts.single.entry.endTime, '14:00');
 
       final awakeDay = SleepDay(
         dateKey: '2026-10-07',

@@ -233,6 +233,28 @@ const _translations = <String, Map<AppLanguage, String>>{
     AppLanguage.german:
         'Nur während eines erfassten Schlafzeitraums verfügbar.',
   },
+  'No se puede guardar este horario': {
+    AppLanguage.portuguese: 'Não é possível salvar este horário',
+    AppLanguage.german: 'Dieser Zeitraum kann nicht gespeichert werden',
+  },
+  'Aceptar': {
+    AppLanguage.portuguese: 'Aceitar',
+    AppLanguage.german: 'OK',
+  },
+  'El intervalo de despertar {attempted} debe quedar dentro de un período de sueño registrado.':
+      {
+    AppLanguage.portuguese:
+        'O intervalo acordado {attempted} deve ocorrer dentro de um período de sono registrado.',
+    AppLanguage.german:
+        'Der Wachzeitraum {attempted} muss innerhalb eines erfassten Schlafzeitraums liegen.',
+  },
+  'El intervalo {attempted} se solapa con “{category}”, registrado de {start} a {end}.':
+      {
+    AppLanguage.portuguese:
+        'O intervalo {attempted} coincide com “{category}”, registrado das {start} às {end}.',
+    AppLanguage.german:
+        'Der Zeitraum {attempted} überschneidet sich mit „{category}“, erfasst von {start} bis {end}.',
+  },
   'Historial del día ({count})': {
     AppLanguage.portuguese: 'Histórico do dia ({count})',
     AppLanguage.german: 'Tagesverlauf ({count})',
