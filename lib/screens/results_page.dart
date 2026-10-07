@@ -5,6 +5,7 @@ import 'package:printing/printing.dart';
 
 import '../data/questions.dart';
 import '../data/sleep_data.dart';
+import '../localization.dart';
 
 class ResultsPage extends StatefulWidget {
   const ResultsPage({super.key, required this.profile, required this.days});
@@ -33,7 +34,8 @@ class _ResultsPageState extends State<ResultsPage> {
     };
   }
 
-  String _hoursLabel(int minutes) => '${totalHoursLabel(minutes)} h';
+  String _hoursLabel(BuildContext context, int minutes) =>
+      appText(context, '{time} h', {'time': totalHoursLabel(minutes)});
 
   String _dateLabel(String key) {
     final parts = key.split('-');
@@ -48,51 +50,64 @@ class _ResultsPageState extends State<ResultsPage> {
         .where((question) => (totals[question] ?? 0) > 0)
         .map(
           (question) => [
-            question,
-            _hoursLabel(totals[question]!),
-            '${totals[question]} min',
+            appText(context, question),
+            _hoursLabel(context, totals[question]!),
+            appText(context, '{count} min', {
+              'count': '${totals[question]}',
+            }),
           ],
         )
         .toList();
     final detailedEntries = day.entries
         .map(
           (entry) => [
-            entry.question,
+            appText(context, entry.question),
             '${entry.startTime} - ${entry.endTime}',
-            _hoursLabel(entry.minutes),
+            _hoursLabel(context, entry.minutes),
           ],
         )
         .toList();
     final answers = day.answers.entries
         .where((answer) => answer.value.trim().isNotEmpty)
-        .map((answer) => '${answer.key}\n${answer.value}')
+        .map((answer) => '${appText(context, answer.key)}\n${answer.value}')
         .join('\n\n');
 
     document.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        build: (context) => [
+        build: (_) => [
           pw.Text(
-            'Registro de sueño',
+            appText(context, 'Registro de sueño'),
             style: pw.TextStyle(
               fontSize: 24,
               fontWeight: pw.FontWeight.bold,
             ),
           ),
           pw.SizedBox(height: 8),
-          pw.Text('Perfil: ${widget.profile.name}'),
-          pw.Text('Fecha: ${_dateLabel(day.dateKey)}'),
+          pw.Text(
+            appText(context, 'Perfil: {name}', {'name': widget.profile.name}),
+          ),
+          pw.Text(
+            appText(context, 'Fecha: {date}', {
+              'date': _dateLabel(day.dateKey),
+            }),
+          ),
           pw.SizedBox(height: 20),
           pw.Text(
-            'Tiempo total por categoría (horas)',
+            appText(context, 'Tiempo total por categoría (horas)'),
             style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 8),
           if (rows.isEmpty)
-            pw.Text('No hay tiempos registrados para este día.')
+            pw.Text(
+                appText(context, 'No hay tiempos registrados para este día.'))
           else
             pw.TableHelper.fromTextArray(
-              headers: const ['Categoría', 'Total', 'Minutos'],
+              headers: [
+                appText(context, 'Categoría'),
+                appText(context, 'Total'),
+                appText(context, 'Minutos'),
+              ],
               data: rows,
               headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
               headerDecoration: const pw.BoxDecoration(
@@ -102,15 +117,19 @@ class _ResultsPageState extends State<ResultsPage> {
             ),
           pw.SizedBox(height: 20),
           pw.Text(
-            'Mediciones',
+            appText(context, 'Mediciones'),
             style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 8),
           if (detailedEntries.isEmpty)
-            pw.Text('No hay mediciones.')
+            pw.Text(appText(context, 'No hay mediciones.'))
           else
             pw.TableHelper.fromTextArray(
-              headers: const ['Categoría', 'Horario', 'Duración'],
+              headers: [
+                appText(context, 'Categoría'),
+                appText(context, 'Horario'),
+                appText(context, 'Duración'),
+              ],
               data: detailedEntries,
               headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
               headerDecoration: const pw.BoxDecoration(
@@ -121,7 +140,7 @@ class _ResultsPageState extends State<ResultsPage> {
           if (answers.isNotEmpty) ...[
             pw.SizedBox(height: 20),
             pw.Text(
-              'Cuestionario',
+              appText(context, 'Cuestionario'),
               style: pw.TextStyle(
                 fontSize: 16,
                 fontWeight: pw.FontWeight.bold,
@@ -148,14 +167,16 @@ class _ResultsPageState extends State<ResultsPage> {
       return value > max ? value : max;
     });
     return Scaffold(
-      appBar: AppBar(title: const Text('Resultados diarios')),
+      appBar: AppBar(title: Text(appText(context, 'Resultados diarios'))),
       body: widget.days.isEmpty
-          ? const Center(
+          ? Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
+                padding: const EdgeInsets.all(24),
                 child: Text(
-                  'Todavía no hay registros para este perfil. '
-                  'Añade mediciones desde la pantalla principal.',
+                  appText(
+                    context,
+                    'Todavía no hay registros para este perfil. Añade mediciones desde la pantalla principal.',
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -169,7 +190,7 @@ class _ResultsPageState extends State<ResultsPage> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Selecciona un día',
+                  appText(context, 'Selecciona un día'),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 6),
@@ -180,8 +201,16 @@ class _ResultsPageState extends State<ResultsPage> {
                       leading: const Icon(Icons.calendar_today),
                       title: Text(_dateLabel(day.dateKey)),
                       subtitle: Text(
-                        '${day.entries.length} medición(es)'
-                        '${day.answers.isEmpty ? '' : ' · cuestionario guardado'}',
+                        appText(
+                          context,
+                          '{count} medición(es){questionnaire}',
+                          {
+                            'count': '${day.entries.length}',
+                            'questionnaire': day.answers.isEmpty
+                                ? ''
+                                : appText(context, ' · cuestionario guardado'),
+                          },
+                        ),
                       ),
                       trailing: selected?.dateKey == day.dateKey
                           ? const Icon(Icons.check_circle)
@@ -196,12 +225,14 @@ class _ResultsPageState extends State<ResultsPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          'Diagrama · ${_dateLabel(selected.dateKey)}',
+                          appText(context, 'Diagrama · {date}', {
+                            'date': _dateLabel(selected.dateKey),
+                          }),
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                       ),
                       IconButton.filledTonal(
-                        tooltip: 'Imprimir o guardar PDF',
+                        tooltip: appText(context, 'Imprimir o guardar PDF'),
                         onPressed: () => _exportPdf(selected),
                         icon: const Icon(Icons.picture_as_pdf_outlined),
                       ),
@@ -209,7 +240,8 @@ class _ResultsPageState extends State<ResultsPage> {
                   ),
                   const SizedBox(height: 8),
                   if (totals.isEmpty)
-                    const Text('No hay tiempos registrados para este día.')
+                    Text(appText(
+                        context, 'No hay tiempos registrados para este día.'))
                   else
                     ...appQuestions
                         .where((question) => totals.containsKey(question))
@@ -224,9 +256,10 @@ class _ResultsPageState extends State<ResultsPage> {
                           children: [
                             Row(
                               children: [
-                                Expanded(child: Text(question)),
+                                Expanded(
+                                    child: Text(appText(context, question))),
                                 Text(
-                                  _hoursLabel(minutes),
+                                  _hoursLabel(context, minutes),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -250,18 +283,18 @@ class _ResultsPageState extends State<ResultsPage> {
                     }),
                   const Divider(height: 28),
                   Text(
-                    'Mediciones guardadas',
+                    appText(context, 'Mediciones guardadas'),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   ...selected.entries.map(
                     (entry) => ListTile(
                       dense: true,
                       contentPadding: EdgeInsets.zero,
-                      title: Text(entry.question),
+                      title: Text(appText(context, entry.question)),
                       subtitle: Text(
                         '${entry.startTime} - ${entry.endTime}',
                       ),
-                      trailing: Text(_hoursLabel(entry.minutes)),
+                      trailing: Text(_hoursLabel(context, entry.minutes)),
                     ),
                   ),
                 ],

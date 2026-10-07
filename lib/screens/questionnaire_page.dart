@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../localization.dart';
+
 class QuestionnairePage extends StatefulWidget {
   const QuestionnairePage({
     super.key,
@@ -62,7 +64,7 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
         '${widget.date.month.toString().padLeft(2, '0')}.'
         '${widget.date.year}';
     return Scaffold(
-      appBar: AppBar(title: const Text('Cuestionario diario')),
+      appBar: AppBar(title: Text(appText(context, 'Cuestionario diario'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -70,7 +72,11 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
             child: ListTile(
               leading: const Icon(Icons.child_care),
               title: Text(widget.childName),
-              subtitle: Text('Fecha del registro: $dateLabel'),
+              subtitle: Text(
+                appText(context, 'Fecha del registro: {date}', {
+                  'date': dateLabel,
+                }),
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -83,7 +89,7 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                 maxLines: question.$2 + 2,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  labelText: question.$1,
+                  labelText: appText(context, question.$1),
                   border: const OutlineInputBorder(),
                   alignLabelWithHint: true,
                 ),
@@ -93,7 +99,7 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
           FilledButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.save_outlined),
-            label: const Text('Guardar cuestionario'),
+            label: Text(appText(context, 'Guardar cuestionario')),
           ),
         ],
       ),

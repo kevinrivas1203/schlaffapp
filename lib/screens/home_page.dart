@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/questions.dart';
 import '../data/sleep_data.dart';
+import '../localization.dart';
 import 'questionnaire_page.dart';
 import 'results_page.dart';
 import 'sleep_timer_page.dart';
@@ -65,10 +66,32 @@ class _ChildProfilePageState extends State<ChildProfilePage> {
     final profile = widget.profile;
     final entry = await Navigator.of(context).push<SleepEntry>(
       MaterialPageRoute(
-        builder: (_) => SleepTimerPage(question: question),
+        builder: (_) => SleepTimerPage(
+          question: question,
+          historyEntries: List<SleepEntry>.from(_selectedDay?.entries ?? []),
+          historyDate: _selectedDate,
+        ),
       ),
     );
     if (!mounted || entry == null) return;
+
+    final startMinutes = parseTimeOfDayMinutes(entry.startTime);
+    final endMinutes = parseTimeOfDayMinutes(entry.endTime);
+    if (startMinutes == null || endMinutes == null) {
+      _showTimelineError(SleepTimelineIssue.invalidSavedTime);
+      return;
+    }
+    final issue = validateSleepEntryTimeline(
+      question: entry.question,
+      date: _selectedDate,
+      startMinutes: startMinutes,
+      endMinutes: endMinutes,
+      existingDays: _daysByProfile[profile.id] ?? const [],
+    );
+    if (issue != null) {
+      _showTimelineError(issue);
+      return;
+    }
 
     setState(() {
       final days = _daysByProfile.putIfAbsent(profile.id, () => []);
@@ -82,6 +105,22 @@ class _ChildProfilePageState extends State<ChildProfilePage> {
       days.sort((a, b) => b.dateKey.compareTo(a.dateKey));
     });
     await _persist();
+  }
+
+  void _showTimelineError(SleepTimelineIssue issue) {
+    final message = switch (issue) {
+      SleepTimelineIssue.wakeOutsideSleep =>
+        'El período de despertar debe quedar dentro de un período de sueño registrado.',
+      SleepTimelineIssue.overlapsSleep =>
+        'Este horario se solapa con un período de sueño.',
+      SleepTimelineIssue.overlapsAnotherEntry =>
+        'Este horario se solapa con otra actividad registrada.',
+      SleepTimelineIssue.invalidSavedTime =>
+        'Hay un horario guardado no válido. Revisa ese registro antes de continuar.',
+    };
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(appText(context, message))));
   }
 
   Future<void> _editQuestionnaire() async {
@@ -131,10 +170,13 @@ class _ChildProfilePageState extends State<ChildProfilePage> {
     return day.totalMinutesFor(question);
   }
 
-  String _formatHours(int minutes) {
+  String _formatHours(BuildContext context, int minutes) {
     final hours = minutes ~/ 60;
     final remainder = minutes % 60;
-    return '$hours h ${remainder.toString().padLeft(2, '0')} min';
+    return appText(context, '{hours} h {minutes} min', {
+      'hours': '$hours',
+      'minutes': remainder.toString().padLeft(2, '0'),
+    });
   }
 
   @override
@@ -145,7 +187,7 @@ class _ChildProfilePageState extends State<ChildProfilePage> {
         title: Text(widget.profile.name),
         actions: [
           IconButton(
-            tooltip: 'Resultados e informes',
+            tooltip: appText(context, 'Resultados e informes'),
             onPressed: _loading ? null : _openResults,
             icon: const Icon(Icons.bar_chart),
           ),
@@ -154,69 +196,97 @@ class _ChildProfilePageState extends State<ChildProfilePage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _chooseDate,
-                              icon: const Icon(Icons.calendar_month),
-                              label: Text(
-                                '${_selectedDate.day.toString().padLeft(2, '0')}.'
-                                '${_selectedDate.month.toString().padLeft(2, '0')}.'
-                                '${_selectedDate.year}',
-                              ),
-                            ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _chooseDate,
+                          icon: const Icon(Icons.calendar_month),
+                          label: Text(
+                            '${_selectedDate.day.toString().padLeft(2, '0')}.'
+                            '${_selectedDate.month.toString().padLeft(2, '0')}.'
+                            '${_selectedDate.year}',
                           ),
-                          const SizedBox(width: 8),
-                          FilledButton.tonalIcon(
-                            onPressed: _editQuestionnaire,
-                            icon: const Icon(Icons.assignment_outlined),
-                            label: const Text('Cuestionario'),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(16, 12, 16, 6),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Registro del día · toca una categoría para registrar tiempo',
-                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
-                    ),
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-                        itemCount: appQuestions.length,
-                        itemBuilder: (context, index) {
-                          final question = appQuestions[index];
-                          final total = _totalMinutes(day, question);
-                          return Card(
-                            child: ListTile(
-                              leading: const CircleAvatar(
-                                child: Icon(Icons.schedule),
-                              ),
-                              title: Text(question),
-                              subtitle: Text(
-                                total == 0
-                                    ? 'Sin tiempo registrado'
-                                    : 'Total: ${_formatHours(total)} · '
-                                        '${day!.entries.where((e) => e.question == question).length} registro(s)',
-                              ),
-                              trailing: const Icon(Icons.add_circle_outline),
-                              onTap: () => _addEntry(question),
-                            ),
-                          );
-                        },
+                      const SizedBox(width: 8),
+                      FilledButton.tonalIcon(
+                        onPressed: _editQuestionnaire,
+                        icon: const Icon(Icons.assignment_outlined),
+                        label: Text(appText(context, 'Cuestionario')),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      appText(
+                        context,
+                        'Registro del día · toca una categoría para registrar tiempo',
+                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                    children: [
+                      ...appQuestions.map((question) {
+                        final total = _totalMinutes(day, question);
+                        final wakeNeedsSleep = isAwakeningQuestion(question) &&
+                            !hasSleepIntervalOnDate(
+                              date: _selectedDate,
+                              existingDays:
+                                  _daysByProfile[widget.profile.id] ??
+                                      const [],
+                            );
+                        return Card(
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(Icons.schedule),
+                            ),
+                            title: Text(appText(context, question)),
+                            subtitle: Text(wakeNeedsSleep
+                                ? appText(
+                                    context,
+                                    'Disponible solo durante un período de sueño registrado.',
+                                  )
+                                : total == 0
+                                    ? appText(
+                                        context,
+                                        'Sin tiempo registrado',
+                                      )
+                                    : appText(
+                                        context,
+                                        'Total: {time} · {count} registro(s)',
+                                        {
+                                          'time': _formatHours(
+                                            context,
+                                            total,
+                                          ),
+                                          'count':
+                                              '${day!.entries.where((e) => e.question == question).length}',
+                                        },
+                                      )),
+                            trailing: const Icon(Icons.add_circle_outline),
+                            onTap: wakeNeedsSleep
+                                ? null
+                                : () => _addEntry(question),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
