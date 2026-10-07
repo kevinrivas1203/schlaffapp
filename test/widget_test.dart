@@ -111,12 +111,20 @@ void main() {
     await tester.tap(find.textContaining('Inicio:'));
     await tester.pumpAndSettle();
 
+    expect(find.text('Hora'), findsOneWidget);
+    expect(find.text('Minuto de la hora'), findsOneWidget);
+    expect(find.byType(DropdownButtonFormField<int>), findsNWidgets(2));
     expect(find.text('AM'), findsOneWidget);
     expect(find.text('PM'), findsOneWidget);
 
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(find.text('PM').last);
     await tester.pumpAndSettle();
-    expect(find.textContaining(RegExp(r'AM|PM')), findsNWidgets(2));
+    await tester.tap(find.text('Aceptar'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining(RegExp(r'^Inicio: .* PM$')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Muestra todas las mediciones repetidas en el historial', (

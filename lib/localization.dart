@@ -197,6 +197,14 @@ const _translations = <String, Map<AppLanguage, String>>{
     AppLanguage.portuguese: 'Hora de término',
     AppLanguage.german: 'Endzeit',
   },
+  'Hora': {
+    AppLanguage.portuguese: 'Hora',
+    AppLanguage.german: 'Stunde',
+  },
+  'Minuto de la hora': {
+    AppLanguage.portuguese: 'Minuto',
+    AppLanguage.german: 'Minute',
+  },
   'La hora de inicio y fin no pueden ser iguales.': {
     AppLanguage.portuguese:
         'O horário de início e de término não pode ser igual.',

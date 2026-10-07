@@ -65,20 +65,110 @@ class _SleepTimerPageState extends State<SleepTimerPage> {
 
   Future<void> _chooseManualTime({required bool isStart}) async {
     final initial = isStart ? _manualStart : _manualEnd;
-    final selected = await showTimePicker(
+    var selectedHour = initial.hourOfPeriod == 0 ? 12 : initial.hourOfPeriod;
+    var selectedMinute = initial.minute;
+    var selectedPeriod = initial.period == DayPeriod.am ? 'AM' : 'PM';
+
+    final selected = await showDialog<TimeOfDay>(
       context: context,
-      initialTime: initial,
-      helpText: appText(
-        context,
-        isStart ? 'Hora de inicio' : 'Hora de finalización',
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(
+            appText(
+              context,
+              isStart ? 'Hora de inicio' : 'Hora de finalización',
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: selectedHour,
+                      isExpanded: true,
+                      menuMaxHeight: 280,
+                      decoration: InputDecoration(
+                        labelText: appText(context, 'Hora'),
+                        isDense: true,
+                      ),
+                      items: List.generate(12, (index) => index + 1)
+                          .map(
+                            (hour) => DropdownMenuItem(
+                              value: hour,
+                              child: Text(hour.toString().padLeft(2, '0')),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (hour) {
+                        if (hour != null) {
+                          setDialogState(() => selectedHour = hour);
+                        }
+                      },
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(':', style: TextStyle(fontSize: 20)),
+                  ),
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: selectedMinute,
+                      isExpanded: true,
+                      menuMaxHeight: 280,
+                      decoration: InputDecoration(
+                        labelText: appText(context, 'Minuto de la hora'),
+                        isDense: true,
+                      ),
+                      items: List.generate(60, (minute) => minute)
+                          .map(
+                            (minute) => DropdownMenuItem(
+                              value: minute,
+                              child: Text(minute.toString().padLeft(2, '0')),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (minute) {
+                        if (minute != null) {
+                          setDialogState(() => selectedMinute = minute);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'AM', label: Text('AM')),
+                  ButtonSegment(value: 'PM', label: Text('PM')),
+                ],
+                selected: {selectedPeriod},
+                onSelectionChanged: (selection) => setDialogState(
+                  () => selectedPeriod = selection.first,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(appText(context, 'Cancelar')),
+            ),
+            FilledButton(
+              onPressed: () {
+                var hour = selectedHour % 12;
+                if (selectedPeriod == 'PM') hour += 12;
+                Navigator.of(context).pop(
+                  TimeOfDay(hour: hour, minute: selectedMinute),
+                );
+              },
+              child: Text(appText(context, 'Aceptar')),
+            ),
+          ],
+        ),
       ),
-      builder: (context, child) {
-        final mediaQuery = MediaQuery.of(context);
-        return MediaQuery(
-          data: mediaQuery.copyWith(alwaysUse24HourFormat: false),
-          child: child!,
-        );
-      },
     );
     if (selected == null) return;
     setState(() {
@@ -93,13 +183,13 @@ class _SleepTimerPageState extends State<SleepTimerPage> {
   String _formatDuration(Duration duration) {
     final hours = duration.inHours.toString().padLeft(2, '0');
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(
-      2,
-      '0',
-    );
+          2,
+          '0',
+        );
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(
-      2,
-      '0',
-    );
+          2,
+          '0',
+        );
     return '$hours:$minutes:$seconds';
   }
 
@@ -143,8 +233,7 @@ class _SleepTimerPageState extends State<SleepTimerPage> {
   String _formatEntryInterval(SleepEntry entry) {
     final start = parseTimeOfDayMinutes(entry.startTime);
     final end = parseTimeOfDayMinutes(entry.endTime);
-    final interval =
-        '${_formatHistoryTime(entry.startTime)} – '
+    final interval = '${_formatHistoryTime(entry.startTime)} – '
         '${_formatHistoryTime(entry.endTime)}';
     if (start != null && end != null && end <= start) {
       return '$interval · ${appText(context, 'termina al día siguiente')}';
@@ -171,7 +260,8 @@ class _SleepTimerPageState extends State<SleepTimerPage> {
     }
     if (minutes <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(appText(context, 'Registra al menos un minuto.'))),
+        SnackBar(
+            content: Text(appText(context, 'Registra al menos un minuto.'))),
       );
       return;
     }
@@ -197,9 +287,7 @@ class _SleepTimerPageState extends State<SleepTimerPage> {
 
   @override
   Widget build(BuildContext context) {
-    final duration = _manualMode
-        ? Duration(minutes: _manualMinutes)
-        : _elapsed;
+    final duration = _manualMode ? Duration(minutes: _manualMinutes) : _elapsed;
     final historyEntries = widget.historyEntries.toList()
       ..sort((a, b) {
         final aStart = parseTimeOfDayMinutes(a.startTime) ?? 0;
@@ -345,7 +433,8 @@ class _SleepTimerPageState extends State<SleepTimerPage> {
                   trailing: Text(
                     appText(context, '{hours} h {minutes} min', {
                       'hours': '${entry.minutes ~/ 60}',
-                      'minutes': (entry.minutes % 60).toString().padLeft(2, '0'),
+                      'minutes':
+                          (entry.minutes % 60).toString().padLeft(2, '0'),
                     }),
                   ),
                 ),
