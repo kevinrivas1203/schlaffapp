@@ -18,6 +18,6 @@ temporizador o entrada manual y los resultados locales corresponden a la fase
 actual.
 
 
-//otra tarea pendiente este establecer regla para los tiempos , ejemplo el bebe no puede dormir mas de 6 horas porque tiene que comer. Y la madre si puede dedicarse un tiempo para ella porque el bebe esta dormido. (Ahora mismos segun la linea de tiempo, no me lo permite)
+//otra tarea pendiente este establecer regla para los tiempos , ejemplo el bebe no puede dormir mas de 6 horas porque tiene que comer. Y la madre si puede dedicarse un tiempo para ella porque el bebe esta dormido. (Ahora mismos segun la linea de tiempo, no me lo permite)  para eso tengo que trabajar con classes una bebe y otra madre que que me permita separa los tiempos
 
 //una vez creado el creado el pdf dar la opcion que con un doble click o con dos dedos , pueda hacer hacer un zoom en el documento para revisarlo.
