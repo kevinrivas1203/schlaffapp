@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:protocolschlaff/app.dart';
 import 'package:protocolschlaff/data/sleep_data.dart';
+import 'package:protocolschlaff/screens/results_page.dart';
 import 'package:protocolschlaff/screens/sleep_timer_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -97,6 +98,38 @@ void main() {
     expect(find.text('Iniciar'), findsOneWidget);
     expect(find.text('Terminar'), findsOneWidget);
     expect(find.text('Manual'), findsOneWidget);
+  });
+
+  testWidgets('Los resultados permiten ver y compartir el PDF', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ResultsPage(
+          profile: const ChildProfile(id: 'share-child', name: 'Alex'),
+          days: [
+            SleepDay(
+              dateKey: dateKeyFor(DateTime.now()),
+              entries: const [
+                SleepEntry(
+                  question: 'Dormir en su propia cama',
+                  minutes: 60,
+                  startTime: '21:00',
+                  endTime: '22:00',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    expect(find.byTooltip('Imprimir o guardar PDF'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Imprimir o guardar PDF'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Vista previa del PDF'), findsOneWidget);
+    expect(find.byTooltip('Compartir PDF'), findsOneWidget);
   });
 
   testWidgets('El selector de hora manual muestra AM y PM', (tester) async {

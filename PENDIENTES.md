@@ -16,3 +16,6 @@ definir e integrar un backend, cuentas de usuario y permisos.
 Los perfiles, los registros por fecha, el cuestionario, la captura de tiempo con
 temporizador o entrada manual y los resultados locales corresponden a la fase
 actual.
+
+
+//otra tarea pendiente este establecer regla para los tiempos , ejemplo el bebe no puede dormir mas de 6 horas porque tiene que comer. Y la madre si puede dedicarse un tiempo para ella porque el bebe esta dormido. (Ahora mismos segun la linea de tiempo, no me lo permite)

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -43,7 +45,7 @@ class _ResultsPageState extends State<ResultsPage> {
     return '${parts[2]}.${parts[1]}.${parts[0]}';
   }
 
-  Future<void> _exportPdf(SleepDay day) async {
+  Future<Uint8List> _buildPdf(SleepDay day, PdfPageFormat pageFormat) async {
     final document = pw.Document();
     final totals = _totals(day);
     final rows = appQuestions
@@ -74,7 +76,7 @@ class _ResultsPageState extends State<ResultsPage> {
 
     document.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
+        pageFormat: pageFormat,
         build: (_) => [
           pw.Text(
             appText(context, 'Registro de sueño'),
@@ -153,9 +155,35 @@ class _ResultsPageState extends State<ResultsPage> {
       ),
     );
 
-    await Printing.layoutPdf(
-      onLayout: (_) async => document.save(),
-      name: 'registro-${widget.profile.name}-${day.dateKey}.pdf',
+    return document.save();
+  }
+
+  Future<void> _viewPdf(SleepDay day) async {
+    final filename = 'registro-${widget.profile.name}-${day.dateKey}.pdf';
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(title: Text(appText(context, 'Vista previa del PDF'))),
+          body: PdfPreview(
+            build: (format) => _buildPdf(day, format),
+            pdfFileName: filename,
+            initialPageFormat: PdfPageFormat.a4,
+            allowSharing: false,
+            canChangePageFormat: false,
+            canChangeOrientation: false,
+            canDebug: false,
+            actions: [
+              PdfShareAction(
+                filename: filename,
+                icon: Tooltip(
+                  message: appText(context, 'Compartir PDF'),
+                  child: const Icon(Icons.share_outlined),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -233,7 +261,7 @@ class _ResultsPageState extends State<ResultsPage> {
                       ),
                       IconButton.filledTonal(
                         tooltip: appText(context, 'Imprimir o guardar PDF'),
-                        onPressed: () => _exportPdf(selected),
+                        onPressed: () => _viewPdf(selected),
                         icon: const Icon(Icons.picture_as_pdf_outlined),
                       ),
                     ],

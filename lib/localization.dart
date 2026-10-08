@@ -362,9 +362,17 @@ const _translations = <String, Map<AppLanguage, String>>{
     AppLanguage.portuguese: 'Gráfico · {date}',
     AppLanguage.german: 'Diagramm · {date}',
   },
+  'Compartir PDF': {
+    AppLanguage.portuguese: 'Compartilhar PDF',
+    AppLanguage.german: 'PDF teilen',
+  },
   'Imprimir o guardar PDF': {
     AppLanguage.portuguese: 'Imprimir ou salvar PDF',
     AppLanguage.german: 'PDF drucken oder speichern',
+  },
+  'Vista previa del PDF': {
+    AppLanguage.portuguese: 'Visualização do PDF',
+    AppLanguage.german: 'PDF-Vorschau',
   },
   'No hay tiempos registrados para este día.': {
     AppLanguage.portuguese: 'Não há tempos registrados para este dia.',
