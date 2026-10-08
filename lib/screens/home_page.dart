@@ -64,7 +64,7 @@ class _ChildProfilePageState extends State<ChildProfilePage> {
 
   Future<void> _addEntry(String question) async {
     final profile = widget.profile;
-    final entry = await Navigator.of(context).push<SleepEntry>(
+    final result = await Navigator.of(context).push<SleepEntrySaveResult>(
       MaterialPageRoute(
         builder: (_) => SleepTimerPage(
           question: question,
@@ -73,7 +73,20 @@ class _ChildProfilePageState extends State<ChildProfilePage> {
         ),
       ),
     );
-    if (!mounted || entry == null) return;
+    if (!mounted || result == null) return;
+    final entry = result.entry;
+    final existingDays = _daysByProfile[profile.id] ?? const <SleepDay>[];
+    final dateKey = dateKeyFor(_selectedDate);
+    final validationDays = existingDays.map((day) {
+      if (day.dateKey != dateKey || result.editedIndex == null) return day;
+      final entries = List<SleepEntry>.from(day.entries);
+      entries.removeAt(result.editedIndex!);
+      return SleepDay(
+        dateKey: day.dateKey,
+        entries: entries,
+        answers: Map<String, String>.from(day.answers),
+      );
+    }).toList();
 
     final startMinutes = parseTimeOfDayMinutes(entry.startTime);
     final endMinutes = parseTimeOfDayMinutes(entry.endTime);
@@ -81,6 +94,7 @@ class _ChildProfilePageState extends State<ChildProfilePage> {
       await _showTimelineError(
         SleepTimelineIssue.invalidSavedTime,
         entry,
+        existingDays: validationDays,
       );
       return;
     }
@@ -89,19 +103,24 @@ class _ChildProfilePageState extends State<ChildProfilePage> {
       date: _selectedDate,
       startMinutes: startMinutes,
       endMinutes: endMinutes,
-      existingDays: _daysByProfile[profile.id] ?? const [],
+      existingDays: validationDays,
     );
     if (issue != null) {
-      await _showTimelineError(issue, entry);
+      await _showTimelineError(
+        issue,
+        entry,
+        existingDays: validationDays,
+      );
       return;
     }
 
     setState(() {
       final days = _daysByProfile.putIfAbsent(profile.id, () => []);
-      final key = dateKeyFor(_selectedDate);
-      final index = days.indexWhere((day) => day.dateKey == key);
+      final index = days.indexWhere((day) => day.dateKey == dateKey);
       if (index == -1) {
-        days.add(SleepDay(dateKey: key, entries: [entry]));
+        days.add(SleepDay(dateKey: dateKey, entries: [entry]));
+      } else if (result.editedIndex != null) {
+        days[index].entries[result.editedIndex!] = entry;
       } else {
         days[index].entries.add(entry);
       }
@@ -127,8 +146,9 @@ class _ChildProfilePageState extends State<ChildProfilePage> {
 
   Future<void> _showTimelineError(
     SleepTimelineIssue issue,
-    SleepEntry attemptedEntry,
-  ) async {
+    SleepEntry attemptedEntry, {
+    required List<SleepDay> existingDays,
+  }) async {
     final message = switch (issue) {
       SleepTimelineIssue.wakeOutsideSleep =>
         'El período de despertar debe quedar dentro de un período de sueño registrado.',
@@ -151,7 +171,7 @@ class _ChildProfilePageState extends State<ChildProfilePage> {
             date: _selectedDate,
             startMinutes: startMinutes,
             endMinutes: endMinutes,
-            existingDays: _daysByProfile[widget.profile.id] ?? const [],
+            existingDays: existingDays,
           );
     final conflict = conflicts.firstOrNull;
     final explanation = issue == SleepTimelineIssue.wakeOutsideSleep

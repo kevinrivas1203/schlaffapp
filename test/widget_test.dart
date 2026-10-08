@@ -174,5 +174,30 @@ void main() {
     expect(find.text('09:00 a. m. – 12:00 p. m.'), findsOneWidget);
     expect(find.text('Dormir en su propia cama').evaluate().length,
         greaterThanOrEqualTo(2));
+
+    await tester.tap(find.byTooltip('Editar registro').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Guardar cambios'), findsOneWidget);
+    expect(find.textContaining('Inicio:'), findsOneWidget);
+
+    await tester.tap(find.textContaining('Inicio:'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButtonFormField<int>).first);
+    await tester.pumpAndSettle();
+    final hourOption = find.text('03').evaluate().isNotEmpty
+        ? find.text('03').last
+        : find.text('3').last;
+    await tester.tap(hourOption);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Aceptar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar cambios'));
+    await tester.pumpAndSettle();
+
+    final savedData = await SleepDataStore.loadAll();
+    final savedEntries = savedData.days[profile.id]!.single.entries;
+    expect(savedEntries, hasLength(2));
+    expect(savedEntries.first.startTime, '03:00');
+    expect(savedEntries.first.endTime, '04:00');
   });
 }

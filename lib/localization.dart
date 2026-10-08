@@ -189,6 +189,14 @@ const _translations = <String, Map<AppLanguage, String>>{
     AppLanguage.portuguese: 'Registrar tempo',
     AppLanguage.german: 'Zeit erfassen',
   },
+  'Editar registro': {
+    AppLanguage.portuguese: 'Editar registro',
+    AppLanguage.german: 'Eintrag bearbeiten',
+  },
+  'Guardar cambios': {
+    AppLanguage.portuguese: 'Salvar alterações',
+    AppLanguage.german: 'Änderungen speichern',
+  },
   'Hora de inicio': {
     AppLanguage.portuguese: 'Hora de início',
     AppLanguage.german: 'Startzeit',

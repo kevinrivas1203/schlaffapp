@@ -30,6 +30,8 @@ class _SleepTimerPageState extends State<SleepTimerPage> {
   Timer? _timer;
   bool _running = false;
   bool _timerStopped = false;
+  int? _editingIndex;
+  String? _editingQuestion;
   TimeOfDay _manualStart = TimeOfDay.now();
   TimeOfDay _manualEnd = TimeOfDay.now();
 
@@ -246,6 +248,46 @@ class _SleepTimerPageState extends State<SleepTimerPage> {
       '${date.month.toString().padLeft(2, '0')}.'
       '${date.year}';
 
+  void _editEntry(int index, SleepEntry entry) {
+    final startMinutes = parseTimeOfDayMinutes(entry.startTime);
+    final endMinutes = parseTimeOfDayMinutes(entry.endTime);
+    if (startMinutes == null ||
+        endMinutes == null ||
+        startMinutes == endMinutes) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            appText(
+              context,
+              'Hay un horario guardado no válido. Revisa ese registro antes de continuar.',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    _timer?.cancel();
+    setState(() {
+      _editingIndex = index;
+      _editingQuestion = entry.question;
+      _manualMode = true;
+      _manualStart = TimeOfDay(
+        hour: startMinutes ~/ 60,
+        minute: startMinutes % 60,
+      );
+      _manualEnd = TimeOfDay(
+        hour: endMinutes ~/ 60,
+        minute: endMinutes % 60,
+      );
+      _running = false;
+      _timerStopped = false;
+      _startTime = null;
+      _endTime = null;
+      _elapsed = Duration.zero;
+    });
+  }
+
   void _saveEntry() {
     final minutes = _manualMode ? _manualMinutes : _elapsed.inMinutes;
     if (_manualMode && _manualStart == _manualEnd) {
@@ -265,16 +307,19 @@ class _SleepTimerPageState extends State<SleepTimerPage> {
       );
       return;
     }
-    Navigator.of(context).pop(
-      SleepEntry(
-        question: widget.question,
-        minutes: minutes,
-        startTime: _manualMode
-            ? _storedTimeOfDay(_manualStart)
-            : _storedClockTime(_startTime),
-        endTime: _manualMode
-            ? _storedTimeOfDay(_manualEnd)
-            : _storedClockTime(_endTime),
+    Navigator.of(context).pop<SleepEntrySaveResult>(
+      (
+        entry: SleepEntry(
+          question: _editingQuestion ?? widget.question,
+          minutes: minutes,
+          startTime: _manualMode
+              ? _storedTimeOfDay(_manualStart)
+              : _storedClockTime(_startTime),
+          endTime: _manualMode
+              ? _storedTimeOfDay(_manualEnd)
+              : _storedClockTime(_endTime),
+        ),
+        editedIndex: _editingIndex,
       ),
     );
   }
@@ -288,19 +333,26 @@ class _SleepTimerPageState extends State<SleepTimerPage> {
   @override
   Widget build(BuildContext context) {
     final duration = _manualMode ? Duration(minutes: _manualMinutes) : _elapsed;
-    final historyEntries = widget.historyEntries.toList()
+    final historyEntries = widget.historyEntries.asMap().entries.toList()
       ..sort((a, b) {
-        final aStart = parseTimeOfDayMinutes(a.startTime) ?? 0;
-        final bStart = parseTimeOfDayMinutes(b.startTime) ?? 0;
+        final aStart = parseTimeOfDayMinutes(a.value.startTime) ?? 0;
+        final bStart = parseTimeOfDayMinutes(b.value.startTime) ?? 0;
         return aStart.compareTo(bStart);
       });
     return Scaffold(
-      appBar: AppBar(title: Text(appText(context, 'Registrar tiempo'))),
+      appBar: AppBar(
+        title: Text(
+          appText(
+            context,
+            _editingIndex == null ? 'Registrar tiempo' : 'Editar registro',
+          ),
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           Text(
-            appText(context, widget.question),
+            appText(context, _editingQuestion ?? widget.question),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleLarge,
           ),
@@ -398,7 +450,12 @@ class _SleepTimerPageState extends State<SleepTimerPage> {
           FilledButton.icon(
             onPressed: _manualMode || _timerStopped ? _saveEntry : null,
             icon: const Icon(Icons.save_outlined),
-            label: Text(appText(context, 'Guardar tiempo')),
+            label: Text(
+              appText(
+                context,
+                _editingIndex == null ? 'Guardar tiempo' : 'Guardar cambios',
+              ),
+            ),
           ),
           const SizedBox(height: 24),
           Text(
@@ -425,17 +482,30 @@ class _SleepTimerPageState extends State<SleepTimerPage> {
             )
           else
             ...historyEntries.map(
-              (entry) => Card(
+              (item) => Card(
                 child: ListTile(
+                  onTap: () => _editEntry(item.key, item.value),
                   leading: const Icon(Icons.history),
-                  title: Text(appText(context, entry.question)),
-                  subtitle: Text(_formatEntryInterval(entry)),
-                  trailing: Text(
-                    appText(context, '{hours} h {minutes} min', {
-                      'hours': '${entry.minutes ~/ 60}',
-                      'minutes':
-                          (entry.minutes % 60).toString().padLeft(2, '0'),
-                    }),
+                  title: Text(appText(context, item.value.question)),
+                  subtitle: Text(_formatEntryInterval(item.value)),
+                  trailing: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        appText(context, '{hours} h {minutes} min', {
+                          'hours': '${item.value.minutes ~/ 60}',
+                          'minutes': (item.value.minutes % 60)
+                              .toString()
+                              .padLeft(2, '0'),
+                        }),
+                      ),
+                      IconButton(
+                        tooltip: appText(context, 'Editar registro'),
+                        onPressed: () => _editEntry(item.key, item.value),
+                        icon: const Icon(Icons.edit_outlined),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ],
                   ),
                 ),
               ),

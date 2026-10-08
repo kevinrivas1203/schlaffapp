@@ -44,6 +44,8 @@ class SleepEntry {
       );
 }
 
+typedef SleepEntrySaveResult = ({SleepEntry entry, int? editedIndex});
+
 class SleepDay {
   SleepDay({
     required this.dateKey,
