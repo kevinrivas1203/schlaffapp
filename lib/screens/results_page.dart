@@ -155,7 +155,7 @@ class _ResultsPageState extends State<ResultsPage> {
       ),
     );
 
-    return document.save();
+    return await document.save();
   }
 
   Future<void> _viewPdf(SleepDay day) async {
